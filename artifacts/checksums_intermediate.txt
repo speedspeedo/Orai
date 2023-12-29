@@ -1,0 +1,1 @@
+fe4e7558718f20e9eeb87bcc7adeb2fcce1df9849634fbb66516bc486243bc90  ./target/wasm32-unknown-unknown/release/cw_template.wasm

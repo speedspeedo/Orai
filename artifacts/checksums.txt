@@ -1,0 +1,1 @@
+6f7dcf1ed0d14cec20502a31646625eec5183b5947479b4fc166a636f69abb9f  cw_template.wasm
