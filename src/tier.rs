@@ -126,22 +126,22 @@ mod query {
         return Ok(Some(result_tier));
     }
 
-    fn get_tier_from_tier_contract(
-        deps: &DepsMut,
-        address: String,
-        config: &Config,
-    ) -> StdResult<u8> {
-        let tier_contract = config.tier_contract.to_string();
-        let user_info = TierContractQuery::UserInfo { address };
+    // fn get_tier_from_tier_contract(
+    //     deps: &DepsMut,
+    //     address: String,
+    //     config: &Config,
+    // ) -> StdResult<u8> {
+    //     let tier_contract = config.tier_contract.to_string();
+    //     let user_info = TierContractQuery::UserInfo { address };
 
-        if let TierResponse::UserInfo { tier } =
-            deps.querier.query_wasm_smart(tier_contract, &user_info)?
-        {
-            Ok(tier)
-        } else {
-            Err(StdError::generic_err("Cannot get tier"))
-        }
-    }
+    //     if let TierResponse::UserInfo { tier } =
+    //         deps.querier.query_wasm_smart(tier_contract, &user_info)?
+    //     {
+    //         Ok(tier)
+    //     } else {
+    //         Err(StdError::generic_err("Cannot get tier"))
+    //     }
+    // }
 
     pub fn get_tier(deps: &DepsMut, address: String, viewing_key: Option<String>) -> StdResult<u8> {
         let config = Config::load(deps.storage)?;
@@ -178,12 +178,8 @@ mod query {
     }
 
     pub fn get_min_tier(deps: &DepsMut, config: &Config) -> StdResult<u8> {
-        let tier_contract = config.tier_contract.to_string();
-        let user_info = TierContractQuery::Config {};
-
-        if let TierResponse::Config { min_tier, .. } =
-            deps.querier.query_wasm_smart(tier_contract, &user_info)?
-        {
+        if let config = Config::load(deps.storage)? {
+            let min_tier = config.min_tier();
             Ok(min_tier)
         } else {
             Err(StdError::generic_err("Cannot get min tier"))

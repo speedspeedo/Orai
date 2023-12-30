@@ -27,7 +27,6 @@ pub struct NftToken {
 pub struct InstantiateMsg {
     pub admin: Option<String>,
     pub lock_periods: Vec<u64>,
-    pub tier_contract: String,
     pub nft_contract: String,
     pub validator: String,      // Tier Contract
     pub deposits: Vec<Uint128>, // Tier Contract
@@ -182,7 +181,6 @@ pub struct PurchaseAnswer {
 pub enum QueryResponse {
     Config {
         admin: String,
-        tier_contract: String,
         nft_contract: String,
         lock_periods: Vec<u64>,
     },
@@ -229,7 +227,7 @@ pub enum QueryResponse {
         tier: u8,
         timestamp: u64,
         usd_deposit: Uint128,
-        sei_deposit: Uint128,
+        orai_deposit: Uint128,
     },
     TierInfo {
         tier: u8,

@@ -17,7 +17,7 @@ use crate::{
         Config, Ido, Purchase, ACTIVE_IDOS, ARCHIVED_PURCHASES, CONFIG_KEY, IDO_TO_INFO,
         OWNER_TO_IDOS, PURCHASES, USERINFO, WHITELIST,
     },
-    tier::{get_min_tier, get_tier},
+    tier::get_tier,
 };
 use cosmwasm_std::StdError;
 
@@ -36,7 +36,6 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let admin = msg.admin.unwrap_or(_info.sender.to_string());
     let canonical_admin = admin.to_string();
-    let tier_contract = msg.tier_contract.to_string();
     let nft_contract = msg.nft_contract.to_string();
     let lock_periods_len = msg.lock_periods.len();
 
@@ -53,7 +52,6 @@ pub fn instantiate(
     let mut config = Config {
         admin: canonical_admin,
         status: ContractStatus::Active as u8,
-        tier_contract,
         nft_contract,
         lock_periods: msg.lock_periods,
         min_tier: 0,
@@ -61,7 +59,7 @@ pub fn instantiate(
         usd_deposits: deposits,   // Tier Contract
     };
 
-    let min_tier = get_min_tier(&deps, &config)?;
+    let min_tier = config.min_tier();
     config.min_tier = min_tier;
 
     if lock_periods_len != min_tier as usize {
@@ -307,8 +305,8 @@ fn buy_tokens(
     }
 
     if ido.is_native_payment() {
-        let sei_amount = utils::sent_funds(&info.funds)?;
-        amount = sei_amount.checked_mul(ido.price).unwrap();
+        let orai_amount = utils::sent_funds(&info.funds)?;
+        amount = orai_amount.checked_mul(ido.price).unwrap();
     }
 
     if amount == 0 {

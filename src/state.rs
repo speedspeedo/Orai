@@ -66,7 +66,6 @@ pub const TIER_USER_INFOS: Map<String, TierUserInfo> = Map::new("user_info");
 pub struct Config {
     pub admin: String,
     pub status: u8,
-    pub tier_contract: String,
     pub nft_contract: String,
     pub lock_periods: Vec<u64>,
     pub min_tier: u8,
@@ -90,12 +89,10 @@ impl Config {
 
     pub fn to_answer(self) -> StdResult<QueryResponse> {
         let admin = self.admin.to_string();
-        let tier_contract = self.tier_contract.to_string();
         let nft_contract = self.nft_contract.to_string();
 
         Ok(QueryResponse::Config {
             admin,
-            tier_contract,
             nft_contract,
             lock_periods: self.lock_periods,
         })
@@ -175,7 +172,7 @@ pub struct TierUserInfo {
     pub tier: u8,
     pub timestamp: u64,
     pub usd_deposit: u128,
-    pub sei_deposit: u128,
+    pub orai_deposit: u128,
 }
 
 impl TierUserInfo {
@@ -187,7 +184,7 @@ impl TierUserInfo {
             tier: self.tier,
             timestamp: self.timestamp,
             usd_deposit: Uint128::from(self.usd_deposit),
-            sei_deposit: Uint128::from(self.sei_deposit),
+            orai_deposit: Uint128::from(self.orai_deposit),
         }
     }
 }

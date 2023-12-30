@@ -55,7 +55,7 @@ pub fn sent_funds(coins: &[Coin]) -> StdResult<u128> {
     let mut amount: u128 = 0;
 
     for coin in coins {
-        if coin.denom != "usei" {
+        if coin.denom != "orai" {
             return Err(StdError::generic_err("Unsopported token"));
         }
 

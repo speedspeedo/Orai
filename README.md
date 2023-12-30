@@ -50,7 +50,7 @@ oraid q wasm contract-state smart orai1z8ghpjllnjnqv04e799pjf83vmfw384ujgecqv45q
 
 oraid tx wasm execute orai1z8ghpjllnjnqv04e799pjf83vmfw384ujgecqv45q69hxr9va8jsun5g27 '{ "update": {} }' --node "https://testnet-rpc.orai.io:443" --chain-id Oraichain-testnet --from yodan-wallet --gas-prices 0.025orai --gas auto --gas-adjustment 1.3 -b block -y // update
 
-oraid tx wasm execute b3JhaTE3eHBmdmFrbTJhbWc5NjJ5bHM2Zjg0ejNrZWxsOGM1bHIyNHIydw== '{"mint":{"recipient":"'"orai1z8ghpjllnjnqv04e799pjf83vmfw384ujgecqv45q69hxr9va8jsun5g27"'","amount":"100"}}' --node "https://testnet-rpc.orai.io:443" --chain-id Oraichain-testnet --from yodan-wallet --broadcast-mode=block --gas=1000000 --fees=100000usei -y
+oraid tx wasm execute b3JhaTE3eHBmdmFrbTJhbWc5NjJ5bHM2Zjg0ejNrZWxsOGM1bHIyNHIydw== '{"mint":{"recipient":"'"orai1z8ghpjllnjnqv04e799pjf83vmfw384ujgecqv45q69hxr9va8jsun5g27"'","amount":"100"}}' --node "https://testnet-rpc.orai.io:443" --chain-id Oraichain-testnet --from yodan-wallet --broadcast-mode=block --gas auto --gas-adjustment 1.3 -y
 
 
 ```
