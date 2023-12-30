@@ -1,4 +1,6 @@
-use crate::msg::{ContractStatus, PaymentMethod, PurchaseAnswer, QueryResponse};
+use crate::msg::{
+    ContractStatus, PaymentMethod, PurchaseAnswer, QueryResponse, SerializedWithdrawals,
+};
 use cosmwasm_std::{Order, StdError, StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
@@ -12,8 +14,9 @@ pub const IDO_TO_INFO: Map<(String, u32), UserInfo> = Map::new("ido2info");
 pub const OWNER_TO_IDOS: Map<String, Vec<u32>> = Map::new("owner2idos");
 pub const WHITELIST: Map<(u32, String), bool> = Map::new("whitelist");
 pub const USERINFO: Map<String, UserInfo> = Map::new("usr2info");
-pub const IDO_ITEM: Map<u32, Ido> = Map::new("ido_list");
 pub const TIER_USER_INFOS: Map<String, TierUserInfo> = Map::new("user_info");
+pub const IDO_ITEM: Map<u32, Ido> = Map::new("ido_list");
+pub const WITHDRAWALS_LIST: Map<String, Vec<UserWithdrawal>> = Map::new("withdraw");
 // pub fn ido_whitelist(ido_id: u32, storage: &dyn Storage) -> Map<String, bool> {
 
 //     let key = format!("whitelist_{}", ido_id);
@@ -90,11 +93,20 @@ impl Config {
     pub fn to_answer(self) -> StdResult<QueryResponse> {
         let admin = self.admin.to_string();
         let nft_contract = self.nft_contract.to_string();
+        let min_tier = self.usd_deposits.len().checked_add(1).unwrap() as u8;
 
         Ok(QueryResponse::Config {
             admin,
             nft_contract,
+            validator: self.validator.clone(),
             lock_periods: self.lock_periods,
+            status: self.status.into(),
+            usd_deposits: self
+                .usd_deposits
+                .iter()
+                .map(|d| Uint128::from(*d))
+                .collect(),
+            min_tier: self.min_tier,
         })
     }
 
@@ -302,6 +314,23 @@ impl Ido {
             withdrawn: self.withdrawn,
             shared_whitelist: self.shared_whitelist,
         })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct UserWithdrawal {
+    pub amount: u128,
+    pub claim_time: u64,
+    pub timestamp: u64,
+}
+
+impl UserWithdrawal {
+    pub fn to_serialized(&self) -> SerializedWithdrawals {
+        SerializedWithdrawals {
+            amount: Uint128::from(self.amount),
+            claim_time: self.claim_time,
+            timestamp: self.timestamp,
+        }
     }
 }
 

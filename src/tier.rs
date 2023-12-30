@@ -157,7 +157,7 @@ mod query {
         //     tier: 1,
         //     timestamp: 123456789,
         //     usd_deposit: 100,
-        //     sei_deposit: 200,
+        //     orai_deposit: 200,
         // };
         let min_tier = config.min_tier();
         let tier_user_info =

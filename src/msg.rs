@@ -96,6 +96,28 @@ pub enum ExecuteMsg {
         ido_id: u32,
         padding: Option<String>,
     },
+    // Tier
+    Deposit {
+        padding: Option<String>,
+    },
+    WithdrawFromTier {
+        padding: Option<String>,
+    },
+    Claim {
+        recipient: Option<String>,
+        start: Option<u32>,
+        limit: Option<u32>,
+        padding: Option<String>,
+    },
+    WithdrawRewards {
+        recipient: Option<String>,
+        padding: Option<String>,
+    },
+    Redelegate {
+        validator_address: String,
+        recipient: Option<String>,
+        padding: Option<String>,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -132,6 +154,29 @@ pub enum ExecuteResponse {
         payment_amount: Uint128,
         status: ResponseStatus,
     },
+    // Tier Contrac
+    Deposit {
+        usd_deposit: Uint128,
+        orai_deposit: Uint128,
+        tier: u8,
+        status: ResponseStatus,
+    },
+    WithdrawFromTier {
+        status: ResponseStatus,
+    },
+    Claim {
+        amount: Uint128,
+        status: ResponseStatus,
+    },
+    WithdrawRewards {
+        amount: Uint128,
+        status: ResponseStatus,
+    },
+    Redelegate {
+        amount: Uint128,
+        status: ResponseStatus,
+    },
+    // ............
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -167,6 +212,14 @@ pub enum QueryMsg {
         address: String,
         ido_id: Option<u32>,
     },
+    TierUserInfo {
+        address: String,
+    },
+    Withdrawals {
+        address: String,
+        start: Option<u32>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -178,11 +231,23 @@ pub struct PurchaseAnswer {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub struct SerializedWithdrawals {
+    pub amount: Uint128,
+    pub claim_time: u64,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Config {
         admin: String,
         nft_contract: String,
         lock_periods: Vec<u64>,
+        validator: String,
+        status: u8,
+        usd_deposits: Vec<Uint128>,
+        min_tier: u8,
     },
     IdoAmount {
         amount: u32,
@@ -232,5 +297,9 @@ pub enum QueryResponse {
     TierInfo {
         tier: u8,
         nft_tier: u8,
+    },
+    Withdrawals {
+        amount: u32,
+        withdrawals: Vec<SerializedWithdrawals>,
     },
 }
