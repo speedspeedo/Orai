@@ -13,7 +13,7 @@ pub const OWNER_TO_IDOS: Map<String, Vec<u32>> = Map::new("owner2idos");
 pub const WHITELIST: Map<(u32, String), bool> = Map::new("whitelist");
 pub const USERINFO: Map<String, UserInfo> = Map::new("usr2info");
 pub const IDO_ITEM: Map<u32, Ido> = Map::new("ido_list");
-
+pub const TIER_USER_INFOS: Map<String, TierUserInfo> = Map::new("user_info");
 // pub fn ido_whitelist(ido_id: u32, storage: &dyn Storage) -> Map<String, bool> {
 
 //     let key = format!("whitelist_{}", ido_id);
@@ -98,6 +98,9 @@ impl Config {
             lock_periods: self.lock_periods,
         })
     }
+    pub fn min_tier(&self) -> u8 {
+        self.min_tier
+    }
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -130,6 +133,28 @@ impl UserInfo {
             total_payment: Uint128::new(self.total_payment),
             total_tokens_bought: Uint128::new(self.total_tokens_bought),
             total_tokens_received: Uint128::new(self.total_tokens_received),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TierUserInfo {
+    pub tier: u8,
+    pub timestamp: u64,
+    pub usd_deposit: u128,
+    pub sei_deposit: u128,
+}
+
+impl TierUserInfo {
+    pub fn get_tier(&self) -> u8 {
+        self.tier as u8
+    }
+    pub fn to_answer(&self) -> QueryResponse {
+        QueryResponse::TierUserInfo {
+            tier: self.tier,
+            timestamp: self.timestamp,
+            usd_deposit: Uint128::from(self.usd_deposit),
+            sei_deposit: Uint128::from(self.sei_deposit),
         }
     }
 }

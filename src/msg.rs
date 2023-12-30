@@ -223,6 +223,12 @@ pub enum QueryResponse {
         total_tokens_bought: Uint128,
         total_tokens_received: Uint128,
     },
+    TierUserInfo {
+        tier: u8,
+        timestamp: u64,
+        usd_deposit: Uint128,
+        sei_deposit: Uint128,
+    },
     TierInfo {
         tier: u8,
         nft_tier: u8,

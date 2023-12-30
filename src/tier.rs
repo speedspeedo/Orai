@@ -1,6 +1,9 @@
 #[cfg(not(test))]
 mod query {
-    use crate::{msg::ContractStatus, state::Config};
+    use crate::{
+        msg::ContractStatus,
+        state::{self, Config, TIER_USER_INFOS},
+    };
     use cosmwasm_std::{DepsMut, StdError, StdResult, Uint128};
     use cw721::{AllNftInfoResponse, Cw721QueryMsg, TokensResponse};
     use schemars::JsonSchema;
@@ -149,7 +152,22 @@ mod query {
             })
             .unwrap_or(Ok(None))?;
 
-        let mut tier = get_tier_from_tier_contract(deps, address, &config)?;
+        // let mut tier = get_tier_from_tier_contract(deps, address, &config)?;
+        // let tier_user_info = TierUserInfo {
+        //     tier: 1,
+        //     timestamp: 123456789,
+        //     usd_deposit: 100,
+        //     sei_deposit: 200,
+        // };
+        let min_tier = config.min_tier();
+        let tier_user_info =
+            TIER_USER_INFOS
+                .may_load(deps.storage, address)?
+                .unwrap_or(state::TierUserInfo {
+                    tier: min_tier,
+                    ..Default::default()
+                });
+        let mut tier = tier_user_info.get_tier();
         if let Some(nft_tier) = from_nft_contract {
             if nft_tier < tier {
                 tier = nft_tier
