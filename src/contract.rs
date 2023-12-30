@@ -34,17 +34,21 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // let state = State { counter: 0 };
-
-    // STATE.save(deps.storage, &state)?;
-    // Ok(Response::new().add_attribute("counter", ZERO_CODE.to_string()))
     let admin = msg.admin.unwrap_or(_info.sender.to_string());
     let canonical_admin = admin.to_string();
     let tier_contract = msg.tier_contract.to_string();
     let nft_contract = msg.nft_contract.to_string();
     let lock_periods_len = msg.lock_periods.len();
+
+    // Tier Contract
+    let deposits = msg.deposits.iter().map(|v| v.u128()).collect::<Vec<_>>();
+
+    if deposits.is_empty() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Deposits array is empty",
+        )));
+    }
+    // -------------
 
     let mut config = Config {
         admin: canonical_admin,
@@ -53,6 +57,8 @@ pub fn instantiate(
         nft_contract,
         lock_periods: msg.lock_periods,
         min_tier: 0,
+        validator: msg.validator, // Tier Contract
+        usd_deposits: deposits,   // Tier Contract
     };
 
     let min_tier = get_min_tier(&deps, &config)?;

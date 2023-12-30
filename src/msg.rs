@@ -29,6 +29,8 @@ pub struct InstantiateMsg {
     pub lock_periods: Vec<u64>,
     pub tier_contract: String,
     pub nft_contract: String,
+    pub validator: String,      // Tier Contract
+    pub deposits: Vec<Uint128>, // Tier Contract
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]

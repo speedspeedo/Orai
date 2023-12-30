@@ -1,5 +1,5 @@
-use crate::msg::{PaymentMethod, PurchaseAnswer, QueryResponse};
-use cosmwasm_std::{Order, StdResult, Storage, Uint128};
+use crate::msg::{ContractStatus, PaymentMethod, PurchaseAnswer, QueryResponse};
+use cosmwasm_std::{Order, StdError, StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 use std::cmp::min;
@@ -70,6 +70,8 @@ pub struct Config {
     pub nft_contract: String,
     pub lock_periods: Vec<u64>,
     pub min_tier: u8,
+    pub validator: String,       // Tier Contract
+    pub usd_deposits: Vec<u128>, // Tier Contract
 }
 
 impl Config {
@@ -98,9 +100,40 @@ impl Config {
             lock_periods: self.lock_periods,
         })
     }
+
+    // Tier Contract
     pub fn min_tier(&self) -> u8 {
-        self.min_tier
+        self.usd_deposits.len().checked_add(1).unwrap() as u8
     }
+
+    pub fn max_tier(&self) -> u8 {
+        1
+    }
+
+    pub fn deposit_by_tier(&self, tier: u8) -> u128 {
+        let tier_index = tier.checked_sub(1).unwrap();
+        self.usd_deposits[tier_index as usize]
+    }
+
+    pub fn tier_by_deposit(&self, usd_deposit: u128) -> u8 {
+        self.usd_deposits
+            .iter()
+            .position(|d| *d <= usd_deposit)
+            .unwrap_or(self.usd_deposits.len())
+            .checked_add(1)
+            .unwrap() as u8
+    }
+
+    pub fn assert_contract_active(&self) -> StdResult<()> {
+        let active = ContractStatus::Active as u8;
+        if self.status != active {
+            return Err(StdError::generic_err("Contract is not active"));
+        }
+
+        Ok(())
+    }
+
+    // -------------
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq)]
