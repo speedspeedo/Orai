@@ -54,6 +54,7 @@ serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
 wasm = "0.0.0"
 getrandom = { version = "0.2", features = ["js"] }
+sei-cosmwasm = "0.4.12"
 
 [dev-dependencies]
 cosmwasm-schema = "1.5.0"

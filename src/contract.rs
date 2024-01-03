@@ -827,7 +827,7 @@ fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
 
     let mut orai_deposit = received_funds.amount.u128();
 
-    let band_protocol = BandProtocol::new(&deps)?;
+    let band_protocol: BandProtocol = BandProtocol::new(&deps)?;
 
     let usd_deposit = band_protocol.usd_amount(orai_deposit);
 

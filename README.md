@@ -42,9 +42,15 @@ cd ver_1.0.0/cw_template/artifacts
 
 RES=$(oraid tx wasm store artifacts/cw_template.wasm --node "https://testnet-rpc.orai.io:443" --chain-id "Oraichain-testnet" --from yodan-wallet --gas-prices 0.1orai --gas auto --gas-adjustment 1.3 -y --output json -b block)
 
-CODE_ID=$(echo $RES | jq -r '.logs[0].events[-1].attributes[0].value')
+CODE_ID=$(echo $RES | jq -r '.logs[0].events[-1].attributes[-1].value')
 
-oraid tx wasm instantiate 6536 '{"name":"Anchor","symbol":"ANC","decimals":6,"initial_balances":[{"address":"orai1z8ghpjllnjnqv04e799pjf83vmfw384ujgecqv45q69hxr9va8jsun5g27","amount":"6000000"}]}' --node "https://testnet-rpc.orai.io:443" --chain-id Oraichain-testnet --from yodan-wallet --label "cw_counter" --gas-prices 0.025orai --gas auto --gas-adjustment 1.3 -b block -y --no-admin
+oraid tx wasm instantiate 6536 '{
+        "lock_periods": [1, 1, 1, 1, 1],
+        "nft_contract": "",
+        "validator": "",
+        "deposits": ["100", "50", "10", "1"],
+        "admin": "'"orai1tmw35y8wuyp8pne7q2mckwq97wymgheudj7dss"'"
+    }' --node "https://testnet-rpc.orai.io:443" --chain-id Oraichain-testnet --from yodan-wallet --label "cw_counter" --gas-prices 0.025orai --gas auto --gas-adjustment 1.3 -b block -y --no-admin
 
 oraid q wasm contract-state smart orai1z8ghpjllnjnqv04e799pjf83vmfw384ujgecqv45q69hxr9va8jsun5g27 '{ "counter": {} }' --node "https://testnet-rpc.orai.io:443" --chain-id Oraichain-testnet // get
 
