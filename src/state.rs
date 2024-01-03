@@ -1,5 +1,6 @@
 use crate::msg::{
-    ContractStatus, PaymentMethod, PurchaseAnswer, QueryResponse, SerializedWithdrawals,
+    ContractStatus, OraiswapContract, PaymentMethod, PurchaseAnswer, QueryResponse,
+    SerializedWithdrawals, ValidatorWithWeight,
 };
 use cosmwasm_std::{Order, StdError, StdResult, Storage, Uint128};
 use cw_storage_plus::{Item, Map};
@@ -72,8 +73,9 @@ pub struct Config {
     pub nft_contract: String,
     pub lock_periods: Vec<u64>,
     pub min_tier: u8,
-    pub validator: String,       // Tier Contract
-    pub usd_deposits: Vec<u128>, // Tier Contract
+    pub validators: Vec<ValidatorWithWeight>, // Tier Contract
+    pub usd_deposits: Vec<u128>,              // Tier Contract
+    pub oraiswap_contract: OraiswapContract,
 }
 
 impl Config {
@@ -93,12 +95,18 @@ impl Config {
     pub fn to_answer(self) -> StdResult<QueryResponse> {
         let admin = self.admin.to_string();
         let nft_contract = self.nft_contract.to_string();
-        let min_tier = self.usd_deposits.len().checked_add(1).unwrap() as u8;
+        // let min_tier: u8 = self.usd_deposits.len().checked_add(1).unwrap() as u8;
+
+        let mut temp_validators = Vec::new();
+        for validator in self.validators {
+            temp_validators.push(validator.clone());
+        }
+        // let temp_validators = self.validators.clone();
 
         Ok(QueryResponse::Config {
             admin,
             nft_contract,
-            validator: self.validator.clone(),
+            validators: temp_validators,
             lock_periods: self.lock_periods,
             status: self.status.into(),
             usd_deposits: self

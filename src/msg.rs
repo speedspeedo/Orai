@@ -22,14 +22,45 @@ pub struct NftToken {
     pub viewing_key: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
+pub struct ValidatorWithWeight {
+    pub address: String,
+    pub weight: u128,
+}
+
+impl Clone for ValidatorWithWeight {
+    fn clone(&self) -> ValidatorWithWeight {
+        ValidatorWithWeight {
+            address: self.address.clone(),
+            weight: self.weight.clone(), // Handle other fields accordingly.
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
+pub struct OraiswapContract {
+    pub orai_contract: String,
+    pub usdt_contract: String,
+}
+
+impl Clone for OraiswapContract {
+    fn clone(&self) -> OraiswapContract {
+        OraiswapContract {
+            orai_contract: self.orai_contract.clone(),
+            usdt_contract: self.usdt_contract.clone(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub admin: Option<String>,
     pub lock_periods: Vec<u64>,
     pub nft_contract: String,
-    pub validator: String,      // Tier Contract
-    pub deposits: Vec<Uint128>, // Tier Contract
+    pub validators: Vec<ValidatorWithWeight>, // Tier Contract
+    pub deposits: Vec<Uint128>,               // Tier Contract
+    pub oraiswap_contract: OraiswapContract,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -244,7 +275,7 @@ pub enum QueryResponse {
         admin: String,
         nft_contract: String,
         lock_periods: Vec<u64>,
-        validator: String,
+        validators: Vec<ValidatorWithWeight>,
         status: u8,
         usd_deposits: Vec<Uint128>,
         min_tier: u8,

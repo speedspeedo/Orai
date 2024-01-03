@@ -6,6 +6,7 @@ use crate::state;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::DistributionMsg;
 use cosmwasm_std::StakingMsg;
+use cosmwasm_std::Validator;
 use cosmwasm_std::{
     coin, coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, SubMsg, Uint128, WasmMsg,
@@ -62,8 +63,9 @@ pub fn instantiate(
         nft_contract,
         lock_periods: msg.lock_periods,
         min_tier: 0,
-        validator: msg.validator, // Tier Contract
-        usd_deposits: deposits,   // Tier Contract
+        validators: msg.validators, // Tier Contract
+        usd_deposits: deposits,     // Tier Contract
+        oraiswap_contract: msg.oraiswap_contract,
     };
 
     let min_tier = config.min_tier();
@@ -892,19 +894,23 @@ fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
     user_info.orai_deposit = user_info.orai_deposit.checked_add(orai_deposit).unwrap();
     TIER_USER_INFOS.save(deps.storage, info.sender.to_string(), &user_info)?;
 
-    let delegate_msg = StakingMsg::Delegate {
-        validator: config.validator,
-        amount: coin(
-            user_info
-                .orai_deposit
-                .checked_sub(old_orai_deposit)
-                .unwrap(),
-            ORAI,
-        ),
-    };
+    let validators = config.validators;
 
-    let msg = CosmosMsg::Staking(delegate_msg);
-    messages.push(SubMsg::new(msg));
+    for validator in validators {
+        let individual_amount = user_info
+            .orai_deposit
+            .checked_sub(old_orai_deposit)
+            .unwrap()
+            * validator.weight
+            / 100;
+        let delegate_msg = StakingMsg::Delegate {
+            validator: validator.address,
+            amount: coin(individual_amount, ORAI),
+        };
+
+        let msg: CosmosMsg = CosmosMsg::Staking(delegate_msg);
+        messages.push(SubMsg::new(msg));
+    }
 
     let answer = to_binary(&ExecuteResponse::Deposit {
         usd_deposit: Uint128::new(user_info.usd_deposit),
@@ -941,7 +947,7 @@ pub fn withdraw_from_tier(
 
     let current_time = env.block.time.seconds();
     let claim_time = current_time.checked_add(UNBOUND_LATENCY).unwrap();
-    let withdrawal = UserWithdrawal {
+    let withdrawal: UserWithdrawal = UserWithdrawal {
         amount,
         timestamp: current_time,
         claim_time,
@@ -954,17 +960,35 @@ pub fn withdraw_from_tier(
     withdrawals.push(withdrawal);
     WITHDRAWALS_LIST.save(deps.storage, info.sender.to_string(), &withdrawals)?;
 
-    let validator = config.validator;
+    let validators = config.validators;
     let amount = coin(amount - 4, ORAI);
 
-    let withdraw_msg = StakingMsg::Undelegate { validator, amount };
-    let msg = CosmosMsg::Staking(withdraw_msg);
+    let mut messages: Vec<SubMsg> = Vec::with_capacity(2);
+
+    for validator in validators {
+        let weight_as_uint128 = Uint128::from(validator.weight);
+
+        // Perform the multiplication - Uint128 * Uint128
+        let multiplied = amount
+            .amount
+            .multiply_ratio(weight_as_uint128, Uint128::from(100_u128));
+
+        // Now, `multiplied` is Uint128, but we want the result as u128
+        let individual_amount: u128 = multiplied.u128();
+
+        let withdraw_msg = StakingMsg::Undelegate {
+            validator: validator.address,
+            amount: coin(individual_amount, ORAI),
+        };
+        let msg = CosmosMsg::Staking(withdraw_msg);
+        messages.push(SubMsg::new(msg));
+    }
 
     let answer = to_binary(&ExecuteResponse::WithdrawFromTier {
         status: ResponseStatus::Success,
     })?;
 
-    Ok(Response::new().add_message(msg).set_data(answer))
+    Ok(Response::new().add_submessages(messages).set_data(answer))
 }
 
 pub fn try_claim(
@@ -1046,7 +1070,8 @@ pub fn try_withdraw_rewards(
         return Err(ContractError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let validator = config.validator;
+    let temp_validator = &config.validators[0];
+    let validator = temp_validator.clone().address;
     let delegation = utils::query_delegation(&deps, &env, &validator);
 
     let can_withdraw = delegation
@@ -1084,7 +1109,8 @@ pub fn try_redelegate(
         return Err(ContractError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let old_validator = config.validator;
+    let first_validator = &config.validators[0];
+    let old_validator = first_validator.clone().address;
     let delegation = utils::query_delegation(&deps, &env, &old_validator);
 
     if old_validator == validator_address {
@@ -1094,7 +1120,7 @@ pub fn try_redelegate(
     }
 
     if delegation.is_err() {
-        config.validator = validator_address;
+        config.validators[0].address = validator_address;
         CONFIG_KEY.save(deps.storage, &config)?;
 
         let answer = to_binary(&ExecuteResponse::Redelegate {
@@ -1116,7 +1142,7 @@ pub fn try_redelegate(
         )));
     }
 
-    config.validator = validator_address.clone();
+    config.validators[0].address = validator_address.clone();
     CONFIG_KEY.save(deps.storage, &config)?;
 
     let mut messages = Vec::with_capacity(2);

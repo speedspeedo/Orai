@@ -135,7 +135,7 @@ mod query {
     //     let user_info = TierContractQuery::UserInfo { address };
 
     //     if let TierResponse::UserInfo { tier } =
-    //         deps.querier.query_wasm_smart(tier_contract, &user_info)?
+    // deps.querier.query_wasm_smart(tier_contract, &user_info)?
     //     {
     //         Ok(tier)
     //     } else {
