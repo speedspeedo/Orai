@@ -295,11 +295,9 @@ impl Ido {
             PaymentMethod::Native
         } else {
             let payment_contract = self.payment_token_contract.clone().unwrap();
-            let payment_contract_hash = self.payment_token_hash.clone().unwrap();
 
             PaymentMethod::Token {
                 contract: payment_contract,
-                code_hash: payment_contract_hash,
             }
         };
         let mut remaining_per_tiers: Vec<Uint128> = vec![];

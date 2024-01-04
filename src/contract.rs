@@ -6,9 +6,8 @@ use crate::state;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::DistributionMsg;
 use cosmwasm_std::StakingMsg;
-use cosmwasm_std::Validator;
 use cosmwasm_std::{
-    coin, coins, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    coin, coins, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
@@ -31,8 +30,6 @@ use cosmwasm_std::StdError;
 
 pub const ORAI: &str = "orai";
 pub const UNBOUND_LATENCY: u64 = 21 * 24 * 60 * 60;
-const CONTRACT_NAME: &str = "crates.io:reward-pay&ment";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const ZERO_CODE: i32 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -118,14 +115,9 @@ pub fn execute(
             ido.soft_cap = soft_cap.u128();
             ido.remaining_tokens_per_tier = tokens_per_tier.into_iter().map(|v| v.u128()).collect();
 
-            if let PaymentMethod::Token {
-                contract,
-                code_hash,
-            } = payment
-            {
+            if let PaymentMethod::Token { contract } = payment {
                 let payment_token_contract = contract.to_string();
                 ido.payment_token_contract = Some(payment_token_contract);
-                ido.payment_token_hash = Some(code_hash);
             }
 
             start_ido(deps, env, info, ido, whitelist)
@@ -173,18 +165,46 @@ pub fn execute(
     return response;
 }
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-//     match msg {
-//         QueryMsg::Config {} => to_binary(&query_config(deps)?),
-//         QueryMsg::TierUserInfo { address } => to_binary(&query_user_info(deps, address)?),
-//         QueryMsg::Withdrawals {
-//             address,
-//             start,
-//             limit,
-//         } => to_binary(&query_withdrawals(deps, address, start, limit)?),
-//     }
-// }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::TierUserInfo { address } => to_json_binary(&query_tier_user_info(deps, address)?),
+        QueryMsg::Withdrawals {
+            address,
+            start,
+            limit,
+        } => to_json_binary(&query_withdrawals(deps, address, start, limit)?),
+        QueryMsg::IdoAmount {} => to_json_binary(&query_ido_amount(deps)?),
+        QueryMsg::IdoInfo { ido_id } => to_json_binary(&query_ido_info(deps, ido_id)?),
+        QueryMsg::InWhitelist { address, ido_id } => {
+            to_json_binary(&query_in_whitelist(deps, address, ido_id)?)
+        }
+
+        QueryMsg::IdoListOwnedBy {
+            address,
+            start,
+            limit,
+        } => to_json_binary(&query_ido_list_owned(deps, address, start, limit)?),
+        QueryMsg::Purchases {
+            ido_id,
+            address,
+            start,
+            limit,
+        } => to_json_binary(&query_purchase(deps, address, ido_id, start, limit)?),
+        QueryMsg::ArchivedPurchases {
+            ido_id,
+            address,
+            start,
+            limit,
+        } => to_json_binary(&query_archived_purchase(
+            deps, ido_id, address, start, limit,
+        )?),
+        QueryMsg::UserInfo { address, ido_id } => {
+            to_json_binary(&query_user_info(deps, ido_id, address)?)
+        }
+    }
+}
 
 fn change_admin(
     deps: DepsMut,
@@ -341,11 +361,11 @@ fn start_ido(
 
     let sub_msg = SubMsg::new(WasmMsg::Execute {
         contract_addr: token_address,
-        msg: to_binary(&transfer_msg)?,
+        msg: to_json_binary(&transfer_msg)?,
         funds: vec![],
     });
 
-    let answer = to_binary(&ExecuteResponse::StartIdo {
+    let answer = to_json_binary(&ExecuteResponse::StartIdo {
         ido_id,
         status: ResponseStatus::Success,
     })?;
@@ -470,7 +490,7 @@ fn buy_tokens(
 
     ido.save(deps.storage)?;
 
-    let answer = to_binary(&ExecuteResponse::BuyTokens {
+    let answer = to_json_binary(&ExecuteResponse::BuyTokens {
         unlock_time,
         amount: Uint128::new(amount),
         status: ResponseStatus::Success,
@@ -489,7 +509,7 @@ fn buy_tokens(
 
         let sub_msg = SubMsg::new(WasmMsg::Execute {
             contract_addr: token_contract,
-            msg: to_binary(&transfer_msg)?,
+            msg: to_json_binary(&transfer_msg)?,
             funds: vec![],
         });
 
@@ -544,7 +564,7 @@ fn recv_tokens(
         )?;
         ACTIVE_IDOS.remove(deps.storage, (canonical_sender.to_string(), ido_id));
 
-        let answer = to_binary(&ExecuteResponse::RecvTokens {
+        let answer = to_json_binary(&ExecuteResponse::RecvTokens {
             amount: Uint128::new(user_info.total_payment),
             status: ResponseStatus::Success,
             ido_success: false,
@@ -569,7 +589,7 @@ fn recv_tokens(
 
             let sub_msg = SubMsg::new(WasmMsg::Execute {
                 contract_addr: token_contract,
-                msg: to_binary(&transfer_msg)?,
+                msg: to_json_binary(&transfer_msg)?,
                 funds: vec![],
             });
             return Ok(Response::new().set_data(answer).add_submessage(sub_msg));
@@ -637,7 +657,7 @@ fn recv_tokens(
         )));
     }
 
-    let answer = to_binary(&ExecuteResponse::RecvTokens {
+    let answer = to_json_binary(&ExecuteResponse::RecvTokens {
         amount: Uint128::new(recv_amount),
         status: ResponseStatus::Success,
         ido_success: true,
@@ -675,7 +695,7 @@ fn recv_tokens(
 
     let sub_msg = SubMsg::new(WasmMsg::Execute {
         contract_addr: token_contract,
-        msg: to_binary(&transfer_msg)?,
+        msg: to_json_binary(&transfer_msg)?,
         funds: vec![],
     });
     return Ok(Response::new().set_data(answer).add_submessage(sub_msg));
@@ -727,7 +747,7 @@ fn withdraw(
 
         let sub_msg = SubMsg::new(WasmMsg::Execute {
             contract_addr: ido_token_contract,
-            msg: to_binary(&transfer_msg)?,
+            msg: to_json_binary(&transfer_msg)?,
             funds: vec![],
         });
 
@@ -754,7 +774,7 @@ fn withdraw(
 
             let sub_msg = SubMsg::new(WasmMsg::Execute {
                 contract_addr: token_contract,
-                msg: to_binary(&transfer_msg)?,
+                msg: to_json_binary(&transfer_msg)?,
                 funds: vec![],
             });
 
@@ -762,7 +782,7 @@ fn withdraw(
         };
     }
 
-    let answer = to_binary(&ExecuteResponse::Withdraw {
+    let answer = to_json_binary(&ExecuteResponse::Withdraw {
         ido_amount: remaining_tokens,
         payment_amount: payment_amount,
         status: ResponseStatus::Success,
@@ -790,7 +810,7 @@ fn whitelist_add(
         WHITELIST.save(deps.storage, (ido_id, canonical_address), &true)?;
     }
 
-    let answer = to_binary(&ExecuteResponse::WhitelistAdd {
+    let answer = to_json_binary(&ExecuteResponse::WhitelistAdd {
         status: ResponseStatus::Success,
     })?;
 
@@ -814,7 +834,7 @@ fn whitelist_remove(
         WHITELIST.save(deps.storage, (ido_id, canonical_address), &false)?;
     }
 
-    let answer = to_binary(&ExecuteResponse::WhitelistRemove {
+    let answer = to_json_binary(&ExecuteResponse::WhitelistRemove {
         status: ResponseStatus::Success,
     })?;
 
@@ -912,7 +932,7 @@ fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, C
         messages.push(SubMsg::new(msg));
     }
 
-    let answer = to_binary(&ExecuteResponse::Deposit {
+    let answer = to_json_binary(&ExecuteResponse::Deposit {
         usd_deposit: Uint128::new(user_info.usd_deposit),
         orai_deposit: Uint128::new(user_info.orai_deposit),
         tier: new_tier,
@@ -984,7 +1004,7 @@ pub fn withdraw_from_tier(
         messages.push(SubMsg::new(msg));
     }
 
-    let answer = to_binary(&ExecuteResponse::WithdrawFromTier {
+    let answer = to_json_binary(&ExecuteResponse::WithdrawFromTier {
         status: ResponseStatus::Success,
     })?;
 
@@ -1051,7 +1071,7 @@ pub fn try_claim(
     };
 
     let msg = CosmosMsg::Bank(send_msg);
-    let answer = to_binary(&ExecuteResponse::Claim {
+    let answer = to_json_binary(&ExecuteResponse::Claim {
         amount: claim_amount.into(),
         status: ResponseStatus::Success,
     })?;
@@ -1089,7 +1109,7 @@ pub fn try_withdraw_rewards(
     let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
 
     let msg = CosmosMsg::Distribution(withdraw_msg);
-    let answer = to_binary(&ExecuteResponse::WithdrawRewards {
+    let answer = to_json_binary(&ExecuteResponse::WithdrawRewards {
         amount: Uint128::new(can_withdraw),
         status: ResponseStatus::Success,
     })?;
@@ -1123,7 +1143,7 @@ pub fn try_redelegate(
         config.validators[0].address = validator_address;
         CONFIG_KEY.save(deps.storage, &config)?;
 
-        let answer = to_binary(&ExecuteResponse::Redelegate {
+        let answer = to_json_binary(&ExecuteResponse::Redelegate {
             amount: Uint128::zero(),
             status: ResponseStatus::Success,
         })?;
@@ -1166,7 +1186,7 @@ pub fn try_redelegate(
     };
 
     messages.push(CosmosMsg::Staking(redelegate_msg));
-    let answer = to_binary(&ExecuteResponse::Redelegate {
+    let answer = to_json_binary(&ExecuteResponse::Redelegate {
         amount: Uint128::new(can_redelegate),
         status: ResponseStatus::Success,
     })?;
@@ -1179,10 +1199,10 @@ pub fn query_config(deps: Deps) -> StdResult<QueryResponse> {
     config.to_answer()
 }
 
-pub fn query_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> {
+pub fn query_tier_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> {
     let config = CONFIG_KEY.load(deps.storage)?;
     let min_tier = config.min_tier();
-    let user_info =
+    let tier_user_info =
         TIER_USER_INFOS
             .may_load(deps.storage, address)?
             .unwrap_or(state::TierUserInfo {
@@ -1190,7 +1210,7 @@ pub fn query_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> 
                 ..Default::default()
             });
 
-    let answer = user_info.to_answer();
+    let answer = tier_user_info.to_answer();
     return Ok(answer);
 }
 
@@ -1225,6 +1245,130 @@ pub fn query_withdrawals(
     };
 
     Ok(answer)
+}
+
+pub fn query_ido_amount(deps: Deps) -> StdResult<QueryResponse> {
+    let amount = Ido::len(deps.storage)?;
+    let ido_amount = QueryResponse::IdoAmount { amount };
+    return Ok(ido_amount);
+}
+
+pub fn query_ido_info(deps: Deps, ido_id: u32) -> StdResult<QueryResponse> {
+    let ido = Ido::load(deps.storage, ido_id)?;
+    return Ok(ido.to_answer()?);
+}
+
+pub fn query_in_whitelist(deps: Deps, address: String, ido_id: u32) -> StdResult<QueryResponse> {
+    let in_whitelist = utils::in_whitelist(deps.storage, &address, ido_id)?;
+    let value = QueryResponse::InWhitelist { in_whitelist };
+    return Ok(value);
+}
+
+pub fn query_ido_list_owned(
+    deps: Deps,
+    address: String,
+    start: u32,
+    limit: u32,
+) -> StdResult<QueryResponse> {
+    let canonical_address = address.clone();
+
+    let ido_list = OWNER_TO_IDOS
+        .may_load(deps.storage, canonical_address.clone())?
+        .unwrap_or_default();
+    let amount = ido_list.len() as u32;
+    let mut ido_ids = Vec::new();
+
+    // Provide a default value for start and limit if None
+    let start_index = start;
+    let limit = if limit > 32 { 32 } else { limit };
+
+    // Ensure we do not exceed the length of ido_list or run into overflow issues
+    for i in start_index..std::cmp::min(start_index.saturating_add(limit), amount) {
+        ido_ids.push(ido_list[i as usize]);
+    }
+
+    let response = QueryResponse::IdoListOwnedBy { ido_ids, amount };
+    Ok(response)
+}
+
+pub fn query_purchase(
+    deps: Deps,
+    address: String,
+    ido_id: u32,
+    start: Option<u32>,
+    limit: Option<u32>,
+) -> StdResult<QueryResponse> {
+    let canonical_address = address.clone();
+
+    let purchases = PURCHASES
+        .may_load(deps.storage, (canonical_address.to_string(), ido_id))?
+        .unwrap_or_default();
+    let amount = purchases.len() as u32;
+
+    let start = start.unwrap_or(0);
+    let limit = limit.unwrap_or(300);
+
+    let mut raw_purchases: Vec<Purchase> = Vec::new();
+    for i in start..start + limit {
+        if i < amount {
+            raw_purchases.push(purchases.get(i as usize).unwrap().clone())
+        }
+    }
+
+    let purchases = raw_purchases.into_iter().map(|p| p.to_answer()).collect();
+
+    let response = QueryResponse::Purchases { purchases, amount };
+
+    return Ok(response);
+}
+
+pub fn query_archived_purchase(
+    deps: Deps,
+    ido_id: u32,
+    address: String,
+    start: u32,
+    limit: u32,
+) -> StdResult<QueryResponse> {
+    let canonical_address = address.clone();
+    let purchases = ARCHIVED_PURCHASES
+        .may_load(deps.storage, (canonical_address.to_string(), ido_id))?
+        .unwrap_or_default();
+    let amount = purchases.len() as u32;
+
+    let mut raw_purchases: Vec<Purchase> = Vec::new();
+    for i in start..start + limit {
+        if i < amount {
+            raw_purchases.push(purchases.get(i as usize).unwrap().clone())
+        }
+    }
+
+    let purchases = raw_purchases.into_iter().map(|p| p.to_answer()).collect();
+
+    let response = QueryResponse::ArchivedPurchases { purchases, amount };
+
+    return Ok(response);
+}
+
+pub fn query_user_info(
+    deps: Deps,
+    ido_id: Option<u32>,
+    address: String,
+) -> StdResult<QueryResponse> {
+    let canonical_address = address.clone();
+
+    let user_info = if let Some(ido_id) = ido_id {
+        IDO_TO_INFO
+            .may_load(deps.storage, (canonical_address.to_string(), ido_id))?
+            .unwrap_or_default()
+    } else {
+        USERINFO
+            .may_load(deps.storage, canonical_address.to_string())?
+            .unwrap_or_default()
+    };
+
+    let response = user_info.to_answer();
+
+    return Ok(response);
 }
 
 // #[cfg(test)]
@@ -1443,7 +1587,7 @@ pub fn query_withdrawals(
 
 //             let sub_msg = SubMsg::new(WasmMsg::Execute {
 //                 contract_addr: token_contract,
-//                 msg: to_binary(&transfer_msg).unwrap(),
+//                 msg: to_json_binary(&transfer_msg).unwrap(),
 //                 funds: vec![],
 //             });
 //             assert_eq!(messages.len(), 1);

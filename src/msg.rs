@@ -67,7 +67,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum PaymentMethod {
     Native,
-    Token { contract: String, code_hash: String },
+    Token { contract: String },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
