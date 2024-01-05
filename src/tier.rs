@@ -1,4 +1,3 @@
-#[cfg(not(test))]
 mod query {
     use crate::{
         msg::ContractStatus,
@@ -66,15 +65,15 @@ mod query {
 
         for attribute in attrubutes {
             let trait_type = attribute.trait_type.to_lowercase();
-            if trait_type != "id" {
+            if trait_type != "tier" {
                 continue;
             }
 
             let tier = match attribute.value.as_str() {
-                "XYZA" => 1,
-                "XYZB" => 2,
-                "XYZC" => 3,
-                "XYZD" => 4,
+                "1" => 1,
+                "2" => 2,
+                "3" => 3,
+                "4" => 4,
                 _ => 5,
             };
             return Some(tier);
