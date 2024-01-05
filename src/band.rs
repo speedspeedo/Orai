@@ -49,7 +49,8 @@ impl BandProtocol {
                 }],
             },
         };
-        let rate = deps.querier.query_wasm_smart(orai_contract, &msg)?;
+        let response: ChangeRateResponse = deps.querier.query_wasm_smart(orai_contract, &msg)?;
+        let rate = response.data.amount;
         // let rate = 8123456;
         let orai_per_usd = (Decimal::raw(1000000u128) / Decimal::raw(rate))
             .to_uint_floor()
@@ -144,4 +145,16 @@ pub struct SwapCtrMessageContent {
 #[serde(rename_all = "snake_case")]
 pub struct SwapContractMessage {
     pub simulate_swap_operations: SwapCtrMessageContent,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct Amount {
+    amount: u128
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ChangeRateResponse {
+    pub data: Amount   
 }
